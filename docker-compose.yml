@@ -1,0 +1,50 @@
+version: '3'
+services:
+  mysqldb:
+    image: mariadb
+    ports:
+      - '3306:3306'
+    environment:
+      MARIADB_DATABASE: spring
+      MARIADB_ROOT_PASSWORD: Passw0rd
+    expose:
+      - 3306
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test:
+        [
+          "CMD",
+          "healthcheck.sh",
+          "--su-mysql",
+          "--connect",
+          "--innodb_initialized"
+        ]
+      timeout: 30s
+
+  spring-boot-app:
+    image: spring-boot
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mariadb://mysqldb:3306/spring
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Passw0rd
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: 'true'
+      SPRING_SQL_INIT_MODE: always
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+  react-app:
+    image: react-app
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:80'
+    volumes:
+      - ./src:/app/src
